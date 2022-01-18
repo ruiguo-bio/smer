@@ -955,6 +955,27 @@ def rest_multi_step_single(events, remove_rest=True,remove_continue=True):
     duration_list = []
 
     previous_step = 'e_0'
+
+    find_continue_idx = False
+    remove_continue_indices = []
+    for idx, event in enumerate(events):
+        if event == 'bar' and bar_num == 0:
+            find_continue_idx = True
+            bar_num += 1
+            continue
+        if find_continue_idx and event == 'bar':
+            break
+
+        if find_continue_idx:
+            if event == 'continue':
+                remove_continue_indices.append(idx)
+    if len(remove_continue_indices) > 0:
+
+        for idx in remove_continue_indices[::-1]:
+            events.pop(idx)
+
+
+    bar_num = 0
     for idx,event in enumerate(events):
 
         if event not in duration_multi and in_duration:
@@ -1438,5 +1459,3 @@ def create_input(file_events):
 
     print(f'number of data of this song is {len(return_list)}')
     return return_list
-
-
