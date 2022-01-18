@@ -1,9 +1,6 @@
 import copy
 
-import tables
-
 import math,itertools
-
 
 import pretty_midi
 
@@ -31,7 +28,9 @@ def to_category(array, bins):
     return result
 
 
-def select_track_bar_event(event, track_num=None, selected_bars=None):
+def select_track_bar_event(header_events,event, track_num=None, selected_bars=None,is_remi=False):
+    if isinstance(event, list):
+        event = np.array(event)
     bar_pos = np.where(event == 'bar')[0]
     track0_pos = np.where(event == 'track_0')[0]
     track1_pos = np.where(event == 'track_1')[0]
@@ -41,7 +40,6 @@ def select_track_bar_event(event, track_num=None, selected_bars=None):
 
     all_track_event = []
 
-    header_events = event[:2 + track_nums]
 
     if track_num is None:
         track_num = list(range(track_nums))
@@ -81,17 +79,25 @@ def select_track_bar_event(event, track_num=None, selected_bars=None):
 
     header_events = header_events.tolist()
 
+    tokens_with_header = header_events + np.concatenate(all_track_event).tolist()
 
     # print(header_events + np.concatenate(all_track_event).tolist())
-    pm = event_2midi(header_events + np.concatenate(all_track_event).tolist())
-    # print(all_track_event)
+    if is_remi:
+        pm = remi_2midi(tokens_with_header)
+    else:
+        pm = event_2midi(tokens_with_header)
+     # print(all_track_event)
     if len(track_num) == 2:
-        return all_track_event,pm,pm
+        return all_track_event,pm,pm,tokens_with_header
     elif 0 in track_num:
         if len(header_events) == 3:
             header_events.pop()
-        pm0 = event_2midi(header_events + np.concatenate(track_0_events).tolist())
-        return track_0_events, pm,pm0
+        if is_remi:
+            pm0 = remi_2midi(header_events + np.concatenate(track_0_events).tolist())
+        else:
+
+            pm0 = event_2midi(header_events + np.concatenate(track_0_events).tolist())
+        return track_0_events, pm,pm0,tokens_with_header
     else:
         track_1_events = []
 
@@ -112,8 +118,14 @@ def select_track_bar_event(event, track_num=None, selected_bars=None):
             if event == 'track_1':
                 track_1_for_pm[idx] = 'track_0'
         # print(header_events + track_1_for_pm)
-        pm1 = event_2midi(header_events + track_1_for_pm)
-        return track_1_events, pm,pm1
+
+        if is_remi:
+            pm1 = remi_2midi(header_events + track_1_for_pm)
+        else:
+
+            pm1 = event_2midi(header_events + track_1_for_pm)
+
+        return track_1_events, pm,pm1,tokens_with_header
 
 
 
@@ -1288,6 +1300,8 @@ def cal_features_diffs(pm_generated,pm_original):
 
         #     print(f'the number of items is {len(rest_multi_generated[key])}')
         if 'hist' not in key and 'chro' not in key:
+            print(f'{key} original value is {feature_original[key]} \n'
+                  f'generated value is {features_generated[key]}')
             if feature_original[key] == 0:
                 print(f'original {key} is 0, omit')
                 features_diffs[key] = 0
@@ -1424,524 +1438,5 @@ def create_input(file_events):
 
     print(f'number of data of this song is {len(return_list)}')
     return return_list
-
-# #
-# vocab = WordVocab(all_tokens)
-# event_folder = '/Users/ruiguo/Downloads/score_transformer/jay_event'
-
-# event_folder = '/home/ruiguo/dataset/lmd/lmd_event_corrected_0723/'
-# event_folder = '/home/data/guorui/dataset/lmd/only_melody_bass_event'
-#
-# # # event_folder = './dataset/lmd_event_corrected_0723/'
-# # # event_folder = '/home/ruiguo/dataset/chinese_event'
-# files_sheet = walk(event_folder,suffix='event')
-# files_remi = walk(event_folder,suffix='step_single')
-# files_step_multi = walk(event_folder,suffix='step_multi')
-# files_rest_single = walk(event_folder,suffix='rest_single')
-# # files_chinese = walk('/home/ruiguo/dataset/chinese/event',suffix='event')
-# # print(len(files_chinese))
-# # assert len(files_sheet) == len(files_remi) == len(files_step_multi) == len(files_rest_single)
-# # # # #
-
-
-
-#
-#
-# # #
-# rest_multi = False
-# #
-# create_test = True
-# logger = logging.getLogger(__name__)
-#
-# logger.handlers = []
-#
-# add_control = False
-#
-# if create_test:
-#     if add_control:
-#         if rest_multi:
-#             logfile = 'rest_multi_control_test.log'
-#         else:
-#             logfile = 'step_single_control_test.log'
-#     else:
-#         if rest_multi:
-#             logfile = 'rest_multi_test.log'
-#         else:
-#             logfile = 'step_single_test.log'
-# else:
-#     if add_control:
-#         if rest_multi:
-#             logfile = 'dataset_rest_multi_all_control_training_augment.log'
-#         else:
-#             logfile = 'dataset_step_single_all_control_training_augment.log'
-#     else:
-#         if rest_multi:
-#             logfile = 'dataset_rest_multi_training_augment.log'
-#         else:
-#             logfile = 'dataset_step_single_training_augment.log'
-#
-#
-# logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.DEBUG,
-#                         datefmt='%Y-%m-%d %H:%M:%S', filename=logfile, filemode='w')
-#
-# console = logging.StreamHandler()
-# console.setLevel(logging.INFO)
-# # set a format which is simpler for console use
-# formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(message)s',
-#                               datefmt='%Y-%m-%d %H:%M:%S')
-# console.setFormatter(formatter)
-# logger.addHandler(console)
-#
-# coloredlogs.install(level='INFO', logger=logger, isatty=True)
-
-
-# #
-# for idx,file_name in enumerate(files):
-#     cal_separate_file(files,idx)
-# keydata = json.load(open(event_folder + '/keys.json','r'))
-#
-
-#
-# load a model for key prediction
-
-#
-# checkpoint_epoch = 21
-# config_folder = '/home/data/guorui/wandb/run-20210423_094640-sw0lyk9u/'
-# folder_prefix = '/home/ruiguo/'
-# with open(os.path.join(config_folder,"files/config.yaml")) as file:
-#
-#     config = yaml.full_load(file)
-#
-#
-# vocab = WordVocab(all_tokens)
-# model_prediction = ScoreTransformer(vocab.vocab_size, config['d_model']['value'], config['nhead']['value'], config['num_encoder_layers']['value'],
-#                                  config['num_encoder_layers']['value'], 2048, 2400,
-#                                  0.1, 0.1)
-#
-# model_prediction_dict = torch.load(os.path.join(config_folder,"files/checkpoint_21"))
-# model_prediction_state = model_prediction_dict['model_state_dict']
-# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-#
-# from collections import OrderedDict
-# new_prediction_state_dict = OrderedDict()
-# for k, v in model_prediction_state.items():
-#     name = k[7:]  # remove `module.`
-#     new_prediction_state_dict[name] = v
-#
-# # new_state_dict = model_state
-#
-# model_prediction.load_state_dict(new_prediction_state_dict)
-# model_prediction.to(device)
-#
-# create test data
-# if rest_multi:
-#     files = files_sheet
-# else:
-#     files = files_remi
-# #
-# #
-# if create_test:
-#     total_events = []
-#     total_names = []
-#     start_num = int(len(files) * .9)
-#     end_num = int(len(files) * 1)
-#     print(f'start number {start_num} end number {end_num}')
-#     for idx,file_name in enumerate(files[start_num:]):
-#         events = cal_separate_file(files,idx,augment=False,add_control=add_control,rest_multi=rest_multi)
-#         if events:
-#             total_events.append(events)
-#             h5_file_name = '/home/ruiguo/dataset/lmd/lmd_matched_h5/' + '/'.join(file_name.split('/')[7:-1]) + '.h5'
-#             with tables.open_file(h5_file_name) as h5:
-#                 print((h5.root.metadata.songs.cols.title[0],
-#                                     h5.root.metadata.songs.cols.artist_name[0]))
-#                 total_names.append((h5.root.metadata.songs.cols.title[0],
-#                                     h5.root.metadata.songs.cols.artist_name[0]))
-#
-#
-#     if rest_multi:
-#         pickle.dump(total_events, open(f'/home/data/guorui/score_transformer/sync/rest_multi_no_control_test_batches', 'wb'))
-#         pickle.dump(total_names,
-#                     open(f'/home/data/guorui/score_transformer/sync/rest_multi_no_control_test_batch_names', 'wb'))
-#     else:
-#         pickle.dump(total_events, open(f'/home/data/guorui/score_transformer/sync/step_single_no_control_test_batches', 'wb'))
-#         pickle.dump(total_names,
-#                     open(f'/home/data/guorui/score_transformer/sync/step_single_no_control_test_batch_names', 'wb'))
-#
-
-import shutil
-
-# sheet_more = 0
-# remi_more = 0
-#
-# sheet_more_number = 0
-# remi_more_number = 0
-# sheet_0 = pickle.load(open(files_sheet[0], 'rb'))
-# remi_0 = pickle.load(open(files_remi[0], 'rb'))
-# for i in range(25881):
-#     sheet = pickle.load(open(files_sheet[i], 'rb'))
-#     remi = pickle.load(open(files_remi[i], 'rb'))
-#     if len(sheet) > len(remi):
-#         sheet_more_number += len(sheet) - len(remi)
-#     else:
-#         remi_more_number += len(remi) - len(sheet)
-#
-#
-#     sheet_total += os.path.getsize(one_file)
-#     shutil.copy(one_file,'/home/ruiguo/dataset/all_sheet')
-
-#
-#
-#
-
-# 
-# 
-# start_num = int(len(files) * .9)
-# end_num = int(len(files) * .91)
-# # end_num = len(files)
-# print(f'start file num is {start_num}')
-# print(f'end file num is {end_num}')
-
-# #
-# # mock_0 = pickle.load(open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_all_control_mock_batches', 'rb'))
-# # mock_3 = pickle.load(open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_mock_batches', 'rb'))
-# #
-# # mock_1 = pickle.load(open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_mock_batch_lengths', 'rb'))
-# #
-# # mock_2 = pickle.load(open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_all_control_mock_batch_lengths', 'rb'))
-# training_all_batches, training_batch_length = gen_batches(files[start_num:end_num],augment=True,add_control=add_control,rest_multi=rest_multi)
-#
-# if add_control:
-#     if rest_multi:
-#         pickle.dump(training_all_batches, open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_all_control_mock_batches', 'wb'))
-#         pickle.dump(training_batch_length,
-#                 open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_all_control_mock_batch_lengths', 'wb'))
-#     else:
-#         pickle.dump(training_all_batches,
-#                     open(f'/home/data/guorui/score_transformer/sync/step_single_augment_all_control_mock_batches', 'wb'))
-#         pickle.dump(training_batch_length,
-#                     open(f'/home/data/guorui/score_transformer/sync/step_single_augment_all_control_mock_batch_lengths',
-#                          'wb'))
-# else:
-#     if rest_multi:
-#         pickle.dump(training_all_batches,
-#                     open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_mock_batches', 'wb'))
-#         pickle.dump(training_batch_length,
-#                     open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_mock_batch_lengths',
-#                          'wb'))
-#     else:
-#         pickle.dump(training_all_batches,
-#                     open(f'/home/data/guorui/score_transformer/sync/step_single_augment_mock_batches', 'wb'))
-#         pickle.dump(training_batch_length,
-#                     open(f'/home/data/guorui/score_transformer/sync/step_single_augment_mock_batch_lengths',
-#                          'wb'))
-#
-#
-# pickle.dump(training_all_batches, open(f'./dataset/rest_multi_augment_all_control_mock_batches', 'wb'))
-# pickle.dump(training_batch_length,
-#             open(f'./dataset/rest_multi_augment_all_control_mock_batch_lengths', 'wb'))
-# #
-# #
-# start_num = int(len(files) * .8)
-# end_num = int(len(files) * .9)
-# # end_num = len(files)
-# print(f'start file num is {start_num}')
-# print(f'end file num is {end_num}')
-#
-# training_all_batches, training_batch_length = gen_batches(files[start_num:end_num],augment=True,add_control=add_control,rest_multi=rest_multi)
-#
-# #
-# if add_control:
-#     if rest_multi:
-#         pickle.dump(training_all_batches, open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_all_control_validation_batches', 'wb'))
-#         pickle.dump(training_batch_length,
-#                 open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_all_control_validation_batch_lengths', 'wb'))
-#     else:
-#         pickle.dump(training_all_batches,
-#                     open(f'/home/data/guorui/score_transformer/sync/step_single_augment_all_control_validation_batches', 'wb'))
-#         pickle.dump(training_batch_length,
-#                     open(f'/home/data/guorui/score_transformer/sync/step_single_augment_all_control_validation_batch_lengths',
-#                          'wb'))
-# else:
-#     if rest_multi:
-#         pickle.dump(training_all_batches,
-#                     open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_validation_batches', 'wb'))
-#         pickle.dump(training_batch_length,
-#                     open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_validation_batch_lengths',
-#                          'wb'))
-#     else:
-#         pickle.dump(training_all_batches,
-#                     open(f'/home/data/guorui/score_transformer/sync/step_single_augment_validation_batches', 'wb'))
-#         pickle.dump(training_batch_length,
-#                     open(f'/home/data/guorui/score_transformer/sync/step_single_augment_validation_batch_lengths',
-#                          'wb'))
-#
-# start_num = int(len(files) * .9)
-# end_num = int(len(files) * 1)
-# # end_num = len(files)
-# print(f'start file num is {start_num}')
-# print(f'end file num is {end_num}')
-# 
-# training_all_batches, training_batch_length = gen_batches(files[start_num:end_num],augment=True,add_control=add_control,rest_multi=rest_multi)
-# 
-# 
-# #
-# if add_control:
-#     if rest_multi:
-#         pickle.dump(training_all_batches, open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_all_control_test_batches', 'wb'))
-#         pickle.dump(training_batch_length,
-#                 open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_all_control_test_batch_lengths', 'wb'))
-#     else:
-#         pickle.dump(training_all_batches,
-#                     open(f'/home/data/guorui/score_transformer/sync/step_single_augment_all_control_test_batches', 'wb'))
-#         pickle.dump(training_batch_length,
-#                     open(f'/home/data/guorui/score_transformer/sync/step_single_augment_all_control_test_batch_lengths',
-#                          'wb'))
-# else:
-#     if rest_multi:
-#         pickle.dump(training_all_batches,
-#                     open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_test_batches', 'wb'))
-#         pickle.dump(training_batch_length,
-#                     open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_test_batch_lengths',
-#                          'wb'))
-#     else:
-#         pickle.dump(training_all_batches,
-#                     open(f'/home/data/guorui/score_transformer/sync/step_single_augment_test_batches', 'wb'))
-#         pickle.dump(training_batch_length,
-#                     open(f'/home/data/guorui/score_transformer/sync/step_single_augment_test_batch_lengths',
-#                          'wb'))
-# #
-# # #
-#
-# start_num = int(len(files) * 0)
-# end_num = int(len(files) * .8)
-# # end_num = len(files)
-# print(f'start file num is {start_num}')
-# print(f'end file num is {end_num}')
-#
-# training_all_batches, training_batch_length = gen_batches(files[start_num:end_num],augment=True,add_control=add_control,rest_multi=rest_multi)
-#
-# if add_control:
-#     if rest_multi:
-#         pickle.dump(training_all_batches, open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_all_control_training_batches_0', 'wb'))
-#         pickle.dump(training_batch_length,
-#                 open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_all_control_training_batch_lengths_0', 'wb'))
-#     else:
-#         pickle.dump(training_all_batches,
-#                     open(f'/home/data/guorui/score_transformer/sync/step_single_augment_all_control_training_batches_0', 'wb'))
-#         pickle.dump(training_batch_length,
-#                     open(f'/home/data/guorui/score_transformer/sync/step_single_augment_all_control_training_batch_lengths_0',
-#                          'wb'))
-# else:
-#     if rest_multi:
-#         pickle.dump(training_all_batches,
-#                     open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_training_batches_0', 'wb'))
-#         pickle.dump(training_batch_length,
-#                     open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_training_batch_lengths_0',
-#                          'wb'))
-#     else:
-#         pickle.dump(training_all_batches,
-#                     open(f'/home/data/guorui/score_transformer/sync/step_single_augment_training_batches_0', 'wb'))
-#         pickle.dump(training_batch_length,
-#                     open(f'/home/data/guorui/score_transformer/sync/step_single_augment_training_batch_lengths_0',
-#                          'wb'))
-
-
-
-# #
-# start_num = int(len(files) * .6)
-# end_num = int(len(files) * .8)
-# # end_num = len(files)
-# print(f'start file num is {start_num}')
-# print(f'end file num is {end_num}')
-#
-# training_all_batches, training_batch_length = gen_batches(files[start_num:end_num],augment=True,add_control=add_control,rest_multi=rest_multi)
-#
-#
-
-# if add_control:
-#     if rest_multi:
-#         pickle.dump(training_all_batches, open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_all_control_training_batches_2', 'wb'))
-#         pickle.dump(training_batch_length,
-#                 open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_all_control_training_batch_lengths_2', 'wb'))
-#     else:
-#         pickle.dump(training_all_batches,
-#                     open(f'/home/data/guorui/score_transformer/sync/step_single_augment_all_control_training_batches_2', 'wb'))
-#         pickle.dump(training_batch_length,
-#                     open(f'/home/data/guorui/score_transformer/sync/step_single_augment_all_control_training_batch_lengths_2',
-#                          'wb'))
-# else:
-#     if rest_multi:
-#         pickle.dump(training_all_batches,
-#                     open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_training_batches_2', 'wb'))
-#         pickle.dump(training_batch_length,
-#                     open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_training_batch_lengths_2',
-#                          'wb'))
-#     else:
-#         pickle.dump(training_all_batches,
-#                     open(f'/home/data/guorui/score_transformer/sync/step_single_augment_training_batches_2', 'wb'))
-#         pickle.dump(training_batch_length,
-#                     open(f'/home/data/guorui/score_transformer/sync/step_single_augment_training_batch_lengths_2',
-#                          'wb'))
-#
-
-
-
-
-#
-# start_num = int(len(files) * .8)
-# end_num = int(len(files) * .9)
-# # end_num = len(files)
-# print(f'start file num is {start_num}')
-# print(f'end file num is {end_num}')
-#
-# training_all_batches, training_batch_length = gen_batches(files[start_num:end_num],augment=False,add_control=add_control,rest_multi=rest_multi)
-#
-# if add_control:
-#     if rest_multi:
-#         pickle.dump(training_all_batches, open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_all_control_validation_batches', 'wb'))
-#         pickle.dump(training_batch_length,
-#                 open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_all_control_validation_batch_lengths', 'wb'))
-#     else:
-#         pickle.dump(training_all_batches,
-#                     open(f'/home/data/guorui/score_transformer/sync/step_single_augment_all_control_validation_batches', 'wb'))
-#         pickle.dump(training_batch_length,
-#                     open(f'/home/data/guorui/score_transformer/sync/step_single_augment_all_control_validation_batch_lengths',
-#                          'wb'))
-# else:
-#     if rest_multi:
-#         pickle.dump(training_all_batches,
-#                     open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_validation_batches', 'wb'))
-#         pickle.dump(training_batch_length,
-#                     open(f'/home/data/guorui/score_transformer/sync/rest_multi_augment_validation_batch_lengths',
-#                          'wb'))
-#     else:
-#         pickle.dump(training_all_batches,
-#                     open(f'/home/data/guorui/score_transformer/sync/step_single_augment_validation_batches', 'wb'))
-#         pickle.dump(training_batch_length,
-#                     open(f'/home/data/guorui/score_transformer/sync/step_single_augment_validation_batch_lengths',
-#                          'wb'))
-#
-
-
-#
-#
-# if add_control:
-#     training_all_batches_0 = pickle.load(open(f'./dataset/rest_multi_augment_all_control_training_batches_0', 'rb'))
-#     training_batch_length_0 = pickle.load(open(f'./dataset/rest_multi_augment_all_control_training_batch_lengths_0', 'rb'))
-#
-#
-#     training_all_batches_1 = pickle.load(open(f'./dataset/rest_multi_augment_all_control_training_batches_1', 'rb'))
-#     training_batch_length_1 = pickle.load(open(f'./dataset/rest_multi_augment_all_control_training_batch_lengths_1', 'rb'))
-# else:
-#     training_all_batches_0 = pickle.load(
-#         open(f'./dataset/rest_multi_augment_training_batches_0', 'rb'))
-#     training_batch_length_0 = pickle.load(
-#         open(f'./dataset/rest_multi_augment_training_batch_lengths_0', 'rb'))
-#
-#     training_all_batches_1 = pickle.load(
-#         open(f'./dataset/rest_multi_augment_training_batches_1', 'rb'))
-#     training_batch_length_1 = pickle.load(
-#         open(f'./dataset/rest_multi_augment_training_batch_lengths_1', 'rb'))
-#
-#     training_all_batches_2 = pickle.load(
-#         open(f'./dataset/rest_multi_augment_training_batches_2', 'rb'))
-#     training_batch_length_2 = pickle.load(
-#         open(f'./dataset/rest_multi_augment_training_batch_lengths_2', 'rb'))
-#     #
-#
-# length_0 = len(training_all_batches_0)
-# length_1 = len(training_all_batches_1)
-# training_all_batches_0.extend(training_all_batches_1)
-# training_all_batches_0.extend(training_all_batches_2)
-#
-# length_1_shifted = copy.copy(training_batch_length_1)
-# length_2_shifted = copy.copy(training_batch_length_2)
-#
-# for key1,values1 in length_1_shifted.items():
-#     values = [value + length_0 for value in values1]
-#     length_1_shifted[key1] = values
-#
-#
-# for key1, values1 in length_1_shifted.items():
-#     if key1 in training_batch_length_0:
-#         training_batch_length_0[key1].extend(values1)
-#     else:
-#         training_batch_length_0[key1] = values1
-#
-#
-#
-#
-# for key2,values2 in length_2_shifted.items():
-#     values = [value + length_0 + length_1 for value in values2]
-#     length_2_shifted[key2] = values
-#
-#
-# for key2, values2 in length_2_shifted.items():
-#     if key2 in training_batch_length_0:
-#         training_batch_length_0[key2].extend(values2)
-#     else:
-#         training_batch_length_0[key2] = values2
-#
-#
-#
-# total_length = 0
-# for key,values in training_batch_length_0.items():
-#     total_length += len(values)
-#
-#
-# if add_control:
-#     pickle.dump(training_all_batches_0, open(f'./dataset/rest_multi_augment_all_control_training_batches', 'wb'))
-#     pickle.dump(training_batch_length_0,
-#                 open(f'./dataset/rest_multi_augment_all_control_training_batch_lengths', 'wb'))
-#
-# else:
-#     pickle.dump(training_all_batches_0,
-#                 open(f'./dataset/rest_multi_augment_two_track_training_batches', 'wb'))
-#     pickle.dump(training_batch_length_0,
-#                 open(f'./dataset/rest_multi_augment_two_track_training_batch_lengths',
-#                      'wb'))
-
-#
-#
-# training_all_batches_0 = pickle.load(open(f'/home/data/guorui/score_transformer/sync/step_single_augment_all_control_training_batches_0', 'rb'))
-# training_batch_length_0 = pickle.load(open(f'/home/data/guorui/score_transformer/sync/step_single_augment_all_control_training_batch_lengths_0', 'rb'))
-#
-#
-# training_all_batches_1 = pickle.load(open(f'/home/data/guorui/score_transformer/sync/step_single_augment_all_control_training_batches_1', 'rb'))
-# training_batch_length_1 = pickle.load(open(f'/home/data/guorui/score_transformer/sync/step_single_augment_all_control_training_batch_lengths_1', 'rb'))
-# #
-# training_all_batches_0.extend(training_all_batches_1)
-#
-# length_1_shifted = copy.copy(training_batch_length_1)
-#
-# for key,values in length_1_shifted.items():
-#     values = [value + len(training_all_batches_0) - len(training_all_batches_1) for value in values]
-#     length_1_shifted[key] = values
-#
-#
-# for key1, values1 in length_1_shifted.items():
-#     if key1 in training_batch_length_0:
-#         training_batch_length_0[key1].extend(values1)
-#     else:
-#         training_batch_length_0[key1] = values1
-#
-#
-# total_length = 0
-# for key,values in training_batch_length_0.items():
-#     total_length += len(values)
-#
-#
-#
-# pickle.dump(training_all_batches_0, open(f'/home/data/guorui/score_transformer/sync/step_single_augment_all_control_training_batches', 'wb'))
-# pickle.dump(training_batch_length_0,
-#             open(f'/home/data/guorui/score_transformer/sync/step_single_augment_all_control_training_batch_lengths', 'wb'))
-
-
-
-# print('')
-
-
-#
-#
 
 

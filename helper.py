@@ -19,14 +19,14 @@ def setup_musescore(musescore_path=None):
             app_paths = list(Path('/Applications').glob('MuseScore *.app'))
             if len(app_paths): musescore_path = app_paths[-1] / 'Contents/MacOS/mscore'
         elif system == 'Linux':
-            musescore_path = '/usr/bin/musescore'
+            musescore_path = '/usr/bin/musescore3'
 
     if musescore_path is None or not Path(musescore_path).exists():
         print(
             'Warning: Could not find musescore installation. Please install musescore (see README) and/or update music21 environment paths')
     else:
-        environment.set('musicxmlPath', './')
-        environment.set('musescoreDirectPNGPath', './')
+        environment.set('musicxmlPath',musescore_path )
+        environment.set('musescoreDirectPNGPath', musescore_path)
 
 
 def is_ipython():
