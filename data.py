@@ -1323,21 +1323,14 @@ def cal_features_diffs(pm_generated,pm_original):
         if 'hist' not in key and 'chro' not in key:
             print(f'{key} original value is {feature_original[key]} \n'
                   f'generated value is {features_generated[key]}')
-            if feature_original[key] == 0:
-                print(f'original {key} is 0, omit')
-                features_diffs[key] = 0
-            else:
-                features_diffs[key] = np.abs(
-                    features_generated[key] - feature_original[key]) / feature_original[key]
+
+            features_diffs[key] = np.abs(
+                features_generated[key] - feature_original[key])
         else:
-            if np.sum(
-                np.square(feature_original[key])) == 0:
-                    print(f'original {key} is 0, omit')
-                    features_diffs[key] = 0
-            else:
-                features_diffs[key] = np.sum(
-                    np.square(features_generated[key] - feature_original[key])) / np.sum(
-                    np.square(feature_original[key]))
+
+            features_diffs[key] = np.sum(
+                np.square(features_generated[key] - feature_original[key])) / np.sum(
+                np.square(feature_original[key]))
 
     return features_diffs
 
