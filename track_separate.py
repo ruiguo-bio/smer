@@ -1119,6 +1119,8 @@ if __name__ == "__main__":
 
     total_file_len = len(all_names)
     logger.info(f'total file {total_file_len}')
+    print(args.file_name, args.input_folder,args.output_folder,
+                            args.required_tracks)
     all_file_prog = predict(all_names, args.input_folder,
                             args.output_folder,
                             args.required_tracks,
