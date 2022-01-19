@@ -830,20 +830,16 @@ def predict(all_names, input_folder, output_folder,required_tracks,
 
     for file_name in all_names:
         # logger.info(f'file name is {file_name}')
-        logger.debug(f'the file is {file_name}')
+        logger.info(f'the file is {file_name}')
 
         try:
 
             features, pm = cal_file_features(file_name)
-
             if pm is None:
                 continue
             features = add_labels(features)
-
             remove_file_duplicate_tracks(features, pm)
-            # logger.info(features.shape)
             features = predict_labels(features, melody_model, bass_model, chord_model,drum_model)
-            # logger.info(features.shape)
 
             progs = []
 
@@ -869,8 +865,6 @@ def predict(all_names, input_folder, output_folder,required_tracks,
             #     continue
 
             temp_index = []
-
-
             if melody_tracks > 0:
                 temp_index.append(features.index[np.where(features.is_melody == True)][0])
 
@@ -897,7 +891,6 @@ def predict(all_names, input_folder, output_folder,required_tracks,
                 progs.append(-1)
 
 
-
             if bass_tracks > 0:
                 temp_index.append(features.index[np.where(features.is_bass == True)][0])
             elif predicted_bass_tracks > 0:
@@ -913,15 +906,12 @@ def predict(all_names, input_folder, output_folder,required_tracks,
                 else:
                     logger.debug('no bass')
                     temp_index.append(-2)
-
-
             if temp_index[1] != -2:
                 progs.append(features.loc[temp_index[1], 'trk_prog'])
             else:
                 progs.append(-2)
 
             # logger.info(temp_index)
-
 
             if chord_tracks > 0:
                 temp_index.append(features.index[np.where(features.is_chord == True)][0])
@@ -944,7 +934,6 @@ def predict(all_names, input_folder, output_folder,required_tracks,
                 progs.append(features.loc[temp_index[2], 'trk_prog'])
             else:
                 progs.append(-3)
-
             drum_exist = True
             if drum_tracks > 0:
                 temp_index.append(features.index[np.where(features.is_drum == True)][0])
@@ -969,7 +958,6 @@ def predict(all_names, input_folder, output_folder,required_tracks,
                 progs.append(0)
             else:
                 progs.append(-5)
-
 
             accompaniment_track = False
 
@@ -1005,7 +993,6 @@ def predict(all_names, input_folder, output_folder,required_tracks,
             #     logger.info(f'result track number is 1, skip this {file_name}')
             #     continue
 
-
             result_program = {}
             if -1 not in temp_index:
                 result_program['melody'] = int(progs[0])
@@ -1022,11 +1009,6 @@ def predict(all_names, input_folder, output_folder,required_tracks,
             if -5 not in temp_index:
                 result_program['drum'] = int(progs[-1])
 
-
-
-
-
-
             # logger.info(temp_index)
             # logger.info(progs)
             # logger.info(len(pm.instruments))
@@ -1039,14 +1021,9 @@ def predict(all_names, input_folder, output_folder,required_tracks,
                 if i >= 0:
                     pm_new.instruments.append(deepcopy(pm.instruments[i]))
 
+            base_name = os.path.basename(file_name)
 
-            if input_folder[-1] != '/':
-                input_folder += '/'
-            name_with_sub_folder = file_name.replace(input_folder,"")
-            # original_names.append(file_name)
-            # logger.info(file_name)
-            # logger.info(len(pm.instruments))
-            output_name = os.path.join(output_folder,name_with_sub_folder)
+            output_name = os.path.join(output_folder,base_name)
             new_output_folder = os.path.dirname(output_name)
 
             if not os.path.exists(new_output_folder):
@@ -1119,8 +1096,6 @@ if __name__ == "__main__":
 
     total_file_len = len(all_names)
     logger.info(f'total file {total_file_len}')
-    print(args.file_name, args.input_folder,args.output_folder,
-                            args.required_tracks)
     all_file_prog = predict(all_names, args.input_folder,
                             args.output_folder,
                             args.required_tracks,
@@ -1131,3 +1106,5 @@ if __name__ == "__main__":
     result_file_len = len(all_file_prog.keys())
     logger.info(f'result file {result_file_len}')
     logger.info(f'ratio = {result_file_len / total_file_len}')
+
+
